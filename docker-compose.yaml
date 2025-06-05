@@ -131,6 +131,8 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+    volumes:
+      - C:/Users/ATP/Documents/Dags:/opt/airflow/dags
 
   airflow-scheduler:
     <<: *airflow-common
