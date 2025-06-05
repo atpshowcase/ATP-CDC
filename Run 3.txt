@@ -8,7 +8,8 @@ curl -i -X POST -H "Accept:application/json" -H "Content-Type:application/json" 
     "database.dbname": "Test_DB", 
     "database.names":"Test_DB",
     "database.server.name": "host.docker.internal", 
-    "table.whitelist": "dbo.prospects", 
+    "table.whitelist": "dbo.mstOrder,dbo.mstTenant", 
+    "decimal.handling.mode": "string",
     "topic.prefix": "fullfillment",
     "database.history.kafka.bootstrap.servers": "kafka1:29092", 
     "database.history.kafka.topic": "schema-changes-topic",
@@ -43,19 +44,7 @@ GO
 # Install AirFlow
 1.  curl -LfO 'https://airflow.apache.org/docs/apache-airflow/2.10.5/docker-compose.yaml'
 
-2.  
-    ENDPOINT_URL="http://localhost:8082"
-    curl -X GET \
-        --user "airflow:airflow" \
-        "${ENDPOINT_URL}/api/v1/pools"
-
-    OR
-
-    curl -v --user "airflow:airflow" http://localhost:8082/api/v1/pools
-
-
-
-=========================================================================================================
+2. 
 
 #!/bin/bash
 
@@ -75,7 +64,8 @@ http://localhost:8083/connectors -d '{
     "database.names": "Test_DB",
     "database.server.name": "host.docker.internal",
     "table.whitelist": "dbo.prospects",
-    "topic.prefix": "fullfillment",
+    "topic.p
+    refix": "fullfillment",
     "database.history.kafka.bootstrap.servers": "kafka1:29092",
     "database.history.kafka.topic": "schema-changes-topic",
     "schema.history.internal.kafka.bootstrap.servers": "kafka1:29092",
@@ -90,6 +80,46 @@ echo -e "\n✅ Debezium connector registered.\n"
 # === Airflow: List Pools ===
 echo "🌬️  Checking Airflow pools via API..."
 
-curl -v --user "airflow:airflow" http://localhost:8082/api/v1/pools
+curl -v --user "airflow:airflow" http://localhost:8080/api/v1/pools
 
 echo -e "\n✅ Airflow API call completed."
+
+
+=========================================================================================================
+
+# SELECT ALL
+
+SELECT * FROM sys.tables
+WHERE is_tracked_by_cdc = 1;
+
+# Enabled Table CDC
+
+EXEC sys.sp_cdc_enable_table
+    @source_schema = 'dbo',  -- Schema of the source table
+    @source_name = 'mstTenant',  -- Table name
+    @role_name = NULL,  -- Optional: Role for permissions
+    @supports_net_changes = 0;  -- Optional: Net changes (0 = Disabled, 1 = Enabled)
+    
+# Disabled Table CDC
+
+EXEC sys.sp_cdc_disable_table
+    @capture_instance = 'dbo_mstTenant',  -- Replace with the capture instance name
+    @source_schema = 'dbo', 
+    @source_name = 'mstTenant';
+
+===============================================================================================================================================================
+
+# Note
+- Whitelist = ketika table dimasukkan ke dalam whitelist maka dia akan terhubung ke Apache Kafka dan akan bisa di subscribe 
+- Kalo tidak di Whitelist dia akan muncul di debezium aja dan menyimpan lognya saja
+
+
+Auth Airflow
+user: airflow 
+password: airflow
+
+Make sure python 3.11 version
+
+1. Install Apache Airflow Python
+pip install apache-airflow
+pip install google-re2
